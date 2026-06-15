@@ -1,0 +1,10 @@
+Al Noor:200:University Street:30:2018:no
+Al Rabee 1:512:Rabee Main Street:10:2021:yes
+Al Rabee 2:513:Rabee Main Street:25:2024:yes
+Al Rawda:204:Downtown:8:2008:no
+Al Amal:201:Old City:5:2015:yes
+Al Yasmeen:202:Rafidia:12:2017:no
+Al Zahra:203:New Nablus:40:2010:yes
+Iskan Al Andalus:120:Gabi Baramke:10:2020:no
+Alquds:20:Al Marj:15:1999:yes
+Jbeneh:121:Nishan Street:15:2012:no
