@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 /*
  * Name: Emam Samara
  * Student ID: 1220022
@@ -13,10 +17,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 #define NAME_LEN 100
 #define ADDRESS_LEN 150
 #define PAID_LEN 8
 #define LINE_LEN 512
+#define PATH_LEN 4096
 #define INFO_FILE "info.txt"
 #define HASH_FILE "hash.txt"
 #define MIN_HASH_TABLE_SIZE 11
@@ -57,10 +68,15 @@ typedef struct {
     int loaded;
 } HashTable;
 
+typedef struct AVLMatchItem {
+    AVLNode *node;
+    struct AVLMatchItem *next;
+} AVLMatchItem;
+
 typedef struct {
-    AVLNode **items;
+    AVLMatchItem *head;
+    AVLMatchItem *tail;
     int count;
-    int capacity;
 } AVLMatchList;
 
 typedef struct {
@@ -76,6 +92,7 @@ static int parseIntStrict(const char *text, int minValue, int maxValue, int *out
 static int readIntInRange(const char *prompt, int minValue, int maxValue);
 static void readString(const char *prompt, char *buffer, int size);
 static int readYesNo(const char *prompt, char *buffer, int size);
+static FILE *openProjectFile(const char *filename, const char *mode);
 static int parseBuildingLine(char *line, Building *building);
 static void printBuilding(const Building *building);
 static void printBuildingChoice(int choiceNumber, const Building *building);
@@ -85,6 +102,7 @@ static void writeBuilding(FILE *file, const Building *building);
 static void initAVLMatchList(AVLMatchList *list);
 static void freeAVLMatchList(AVLMatchList *list);
 static int addAVLMatch(AVLMatchList *list, AVLNode *node);
+static AVLNode *getAVLMatchAt(const AVLMatchList *list, int index);
 static void collectAVLMatches(AVLNode *root, const char *name, AVLMatchList *matches);
 static int hasAVLNameIgnoreCase(AVLNode *root, const char *name);
 static AVLNode *chooseAVLMatch(AVLNode *root, const char *name);
@@ -260,6 +278,46 @@ static int readYesNo(const char *prompt, char *buffer, int size) {
     }
 }
 
+static FILE *openProjectFile(const char *filename, const char *mode) {
+    char executablePath[PATH_LEN];
+    char filePath[PATH_LEN];
+    char *lastSlash;
+
+#ifdef _WIN32
+    DWORD length = GetModuleFileNameA(NULL, executablePath, sizeof(executablePath));
+    if (length == 0 || length >= sizeof(executablePath)) {
+        return fopen(filename, mode);
+    }
+#else
+    ssize_t length = readlink("/proc/self/exe", executablePath, sizeof(executablePath) - 1);
+    if (length == -1 || length >= (ssize_t)sizeof(executablePath) - 1) {
+        return fopen(filename, mode);
+    }
+    executablePath[length] = '\0';
+#endif
+
+    lastSlash = strrchr(executablePath, '/');
+#ifdef _WIN32
+    {
+        char *lastBackslash = strrchr(executablePath, '\\');
+        if (lastBackslash != NULL && (lastSlash == NULL || lastBackslash > lastSlash)) {
+            lastSlash = lastBackslash;
+        }
+    }
+#endif
+
+    if (lastSlash == NULL) {
+        return fopen(filename, mode);
+    }
+
+    *(lastSlash + 1) = '\0';
+    if (snprintf(filePath, sizeof(filePath), "%s%s", executablePath, filename) >= (int)sizeof(filePath)) {
+        return NULL;
+    }
+
+    return fopen(filePath, mode);
+}
+
 static int parseBuildingLine(char *line, Building *building) {
     char *token;
     char *fields[6];
@@ -358,35 +416,61 @@ static void writeBuilding(FILE *file, const Building *building) {
 }
 
 static void initAVLMatchList(AVLMatchList *list) {
-    list->items = NULL;
+    list->head = NULL;
+    list->tail = NULL;
     list->count = 0;
-    list->capacity = 0;
 }
 
 static void freeAVLMatchList(AVLMatchList *list) {
-    free(list->items);
-    list->items = NULL;
+    AVLMatchItem *current = list->head;
+    AVLMatchItem *next;
+
+    while (current != NULL) {
+        next = current->next;
+        free(current);
+        current = next;
+    }
+
+    list->head = NULL;
+    list->tail = NULL;
     list->count = 0;
-    list->capacity = 0;
 }
 
 static int addAVLMatch(AVLMatchList *list, AVLNode *node) {
-    AVLNode **newItems;
-    int newCapacity;
+    AVLMatchItem *item = (AVLMatchItem *)malloc(sizeof(AVLMatchItem));
 
-    if (list->count == list->capacity) {
-        newCapacity = list->capacity == 0 ? 4 : list->capacity * 2;
-        newItems = (AVLNode **)realloc(list->items, (size_t)newCapacity * sizeof(AVLNode *));
-        if (newItems == NULL) {
-            printf("Memory allocation failed.\n");
-            return 0;
-        }
-        list->items = newItems;
-        list->capacity = newCapacity;
+    if (item == NULL) {
+        printf("Memory allocation failed.\n");
+        return 0;
     }
 
-    list->items[list->count++] = node;
+    item->node = node;
+    item->next = NULL;
+
+    if (list->tail == NULL) {
+        list->head = item;
+    } else {
+        list->tail->next = item;
+    }
+    list->tail = item;
+    list->count++;
+
     return 1;
+}
+
+static AVLNode *getAVLMatchAt(const AVLMatchList *list, int index) {
+    AVLMatchItem *current = list->head;
+    int currentIndex = 0;
+
+    while (current != NULL) {
+        if (currentIndex == index) {
+            return current->node;
+        }
+        current = current->next;
+        currentIndex++;
+    }
+
+    return NULL;
 }
 
 static void collectAVLMatches(AVLNode *root, const char *name, AVLMatchList *matches) {
@@ -423,14 +507,17 @@ static AVLNode *chooseAVLMatch(AVLNode *root, const char *name) {
     if (matches.count == 0) {
         printf("Building not found.\n");
     } else if (matches.count == 1) {
-        selected = matches.items[0];
+        selected = getAVLMatchAt(&matches, 0);
     } else {
         printf("Multiple buildings match that name:\n");
         for (i = 0; i < matches.count; i++) {
-            printBuildingChoice(i + 1, &matches.items[i]->data);
+            selected = getAVLMatchAt(&matches, i);
+            if (selected != NULL) {
+                printBuildingChoice(i + 1, &selected->data);
+            }
         }
         choice = readIntInRange("Choose building number to use: ", 1, matches.count);
-        selected = matches.items[choice - 1];
+        selected = getAVLMatchAt(&matches, choice - 1);
     }
 
     freeAVLMatchList(&matches);
@@ -667,9 +754,9 @@ static AVLNode *loadAVLFromInfo(AVLNode *root) {
     int loaded = 0;
     int skipped = 0;
 
-    file = fopen(INFO_FILE, "r");
+    file = openProjectFile(INFO_FILE, "r");
     if (file == NULL) {
-        printf("info.txt was not found. Run the program from the folder that contains info.txt.\n");
+        printf("info.txt was not found beside the executable.\n");
         return root;
     }
 
@@ -701,7 +788,7 @@ static AVLNode *loadAVLFromInfo(AVLNode *root) {
 }
 
 static int saveAVLToHashFile(const AVLNode *root) {
-    FILE *file = fopen(HASH_FILE, "w");
+    FILE *file = openProjectFile(HASH_FILE, "w");
 
     if (file == NULL) {
         printf("Could not open %s for writing.\n", HASH_FILE);
@@ -1014,7 +1101,7 @@ static int saveHashToFile(const HashTable *table) {
         return 0;
     }
 
-    file = fopen(HASH_FILE, "w");
+    file = openProjectFile(HASH_FILE, "w");
     if (file == NULL) {
         printf("Could not open %s for writing.\n", HASH_FILE);
         return 0;
@@ -1048,7 +1135,7 @@ static int countValidHashRecords(FILE *file) {
 }
 
 static int loadHashFromFile(HashTable *table) {
-    FILE *file = fopen(HASH_FILE, "r");
+    FILE *file = openProjectFile(HASH_FILE, "r");
     char line[LINE_LEN];
     Building building;
     int inserted;
@@ -1059,7 +1146,7 @@ static int loadHashFromFile(HashTable *table) {
     int tableSize;
 
     if (file == NULL) {
-        printf("hash.txt was not found. Run the program from the folder that contains hash.txt.\n");
+        printf("hash.txt was not found beside the executable.\n");
         return 0;
     }
 
