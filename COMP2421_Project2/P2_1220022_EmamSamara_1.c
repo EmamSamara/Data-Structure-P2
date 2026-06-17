@@ -2,13 +2,10 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-/*
- * Name: Emam Samara
- * Student ID: 1220022
- * Section: 1
- * Course: COMP2421
- * Project: Project 2
- */
+
+//Name: Emam Samara
+//Student ID: 1220022
+//Section: 1
 
 #include <ctype.h>
 #include <errno.h>
@@ -68,26 +65,8 @@ typedef struct {
     int loaded;
 } HashTable;
 
-typedef struct AVLMatchItem {
-    AVLNode *node;
-    struct AVLMatchItem *next;
-} AVLMatchItem;
-
-typedef struct {
-    AVLMatchItem *head;
-    AVLMatchItem *tail;
-    int count;
-} AVLMatchList;
-
-typedef struct {
-    int *indexes;
-    int count;
-    int capacity;
-} HashMatchList;
-
 static void removeNewline(char *str);
 static void trimSpaces(char *str);
-static int equalsIgnoreCase(const char *a, const char *b);
 static int parseIntStrict(const char *text, int minValue, int maxValue, int *out);
 static int readIntInRange(const char *prompt, int minValue, int maxValue);
 static void readString(const char *prompt, char *buffer, int size);
@@ -95,17 +74,9 @@ static int readYesNo(const char *prompt, char *buffer, int size);
 static FILE *openProjectFile(const char *filename, const char *mode);
 static int parseBuildingLine(char *line, Building *building);
 static void printBuilding(const Building *building);
-static void printBuildingChoice(int choiceNumber, const Building *building);
 static Building inputBuilding(void);
 static void writeBuilding(FILE *file, const Building *building);
 
-static void initAVLMatchList(AVLMatchList *list);
-static void freeAVLMatchList(AVLMatchList *list);
-static int addAVLMatch(AVLMatchList *list, AVLNode *node);
-static AVLNode *getAVLMatchAt(const AVLMatchList *list, int index);
-static void collectAVLMatches(AVLNode *root, const char *name, AVLMatchList *matches);
-static int hasAVLNameIgnoreCase(AVLNode *root, const char *name);
-static AVLNode *chooseAVLMatch(AVLNode *root, const char *name);
 static AVLNode *createNode(Building data);
 static int getHeight(const AVLNode *node);
 static void updateHeight(AVLNode *node);
@@ -115,6 +86,7 @@ static AVLNode *leftRotate(AVLNode *x);
 static AVLNode *insertAVL(AVLNode *node, Building data, int *inserted);
 static AVLNode *minValueNode(AVLNode *node);
 static AVLNode *deleteAVL(AVLNode *root, const char *name, int *deleted);
+static AVLNode *searchAVL(AVLNode *root, const char *name);
 static void inorderTraversal(const AVLNode *root);
 static void listApartmentsGreaterThan(const AVLNode *root, int minApartments, int *matches);
 static void listUnpaidBuildings(const AVLNode *root, int *matches);
@@ -131,13 +103,8 @@ static unsigned int hashFunction(const char *name, int tableSize);
 static double loadFactor(const HashTable *table);
 static int hashTableLoaded(const HashTable *table);
 static void freeHashTable(HashTable *table);
-static void initHashMatchList(HashMatchList *list);
-static void freeHashMatchList(HashMatchList *list);
-static int addHashMatch(HashMatchList *list, int index);
-static void collectHashMatches(const HashTable *table, const char *name, HashMatchList *matches);
-static int chooseHashMatch(const HashTable *table, const char *name, int *collisions);
-static int insertHashWithDuplicateMode(HashTable *table, Building data, int *collisions, int ignoreCaseDuplicates);
 static int insertHash(HashTable *table, Building data, int *collisions);
+static int searchHash(const HashTable *table, const char *name, int *index, int *collisions);
 static int deleteHash(HashTable *table, const char *name, int *collisions);
 static void printHashTable(const HashTable *table);
 static int saveHashToFile(const HashTable *table);
@@ -176,27 +143,6 @@ static void trimSpaces(char *str) {
     while (end >= 0 && isspace((unsigned char)str[end])) {
         str[end--] = '\0';
     }
-}
-
-static int equalsIgnoreCase(const char *a, const char *b) {
-    int charA;
-    int charB;
-
-    if (a == NULL || b == NULL) {
-        return 0;
-    }
-
-    while (*a != '\0' && *b != '\0') {
-        charA = tolower((unsigned char)*a);
-        charB = tolower((unsigned char)*b);
-        if (charA != charB) {
-            return 0;
-        }
-        a++;
-        b++;
-    }
-
-    return *a == '\0' && *b == '\0';
 }
 
 static int parseIntStrict(const char *text, int minValue, int maxValue, int *out) {
@@ -381,17 +327,6 @@ static void printBuilding(const Building *building) {
     printf("Paid fees: %s\n", building->paid);
 }
 
-static void printBuildingChoice(int choiceNumber, const Building *building) {
-    printf("%d. %s | %d | %s | %d | %d | %s\n",
-           choiceNumber,
-           building->name,
-           building->number,
-           building->address,
-           building->apartments,
-           building->year,
-           building->paid);
-}
-
 static Building inputBuilding(void) {
     Building building;
 
@@ -413,115 +348,6 @@ static void writeBuilding(FILE *file, const Building *building) {
             building->apartments,
             building->year,
             building->paid);
-}
-
-static void initAVLMatchList(AVLMatchList *list) {
-    list->head = NULL;
-    list->tail = NULL;
-    list->count = 0;
-}
-
-static void freeAVLMatchList(AVLMatchList *list) {
-    AVLMatchItem *current = list->head;
-    AVLMatchItem *next;
-
-    while (current != NULL) {
-        next = current->next;
-        free(current);
-        current = next;
-    }
-
-    list->head = NULL;
-    list->tail = NULL;
-    list->count = 0;
-}
-
-static int addAVLMatch(AVLMatchList *list, AVLNode *node) {
-    AVLMatchItem *item = (AVLMatchItem *)malloc(sizeof(AVLMatchItem));
-
-    if (item == NULL) {
-        printf("Memory allocation failed.\n");
-        return 0;
-    }
-
-    item->node = node;
-    item->next = NULL;
-
-    if (list->tail == NULL) {
-        list->head = item;
-    } else {
-        list->tail->next = item;
-    }
-    list->tail = item;
-    list->count++;
-
-    return 1;
-}
-
-static AVLNode *getAVLMatchAt(const AVLMatchList *list, int index) {
-    AVLMatchItem *current = list->head;
-    int currentIndex = 0;
-
-    while (current != NULL) {
-        if (currentIndex == index) {
-            return current->node;
-        }
-        current = current->next;
-        currentIndex++;
-    }
-
-    return NULL;
-}
-
-static void collectAVLMatches(AVLNode *root, const char *name, AVLMatchList *matches) {
-    if (root == NULL) {
-        return;
-    }
-
-    collectAVLMatches(root->left, name, matches);
-    if (equalsIgnoreCase(root->data.name, name)) {
-        addAVLMatch(matches, root);
-    }
-    collectAVLMatches(root->right, name, matches);
-}
-
-static int hasAVLNameIgnoreCase(AVLNode *root, const char *name) {
-    if (root == NULL) {
-        return 0;
-    }
-    if (equalsIgnoreCase(root->data.name, name)) {
-        return 1;
-    }
-    return hasAVLNameIgnoreCase(root->left, name) || hasAVLNameIgnoreCase(root->right, name);
-}
-
-static AVLNode *chooseAVLMatch(AVLNode *root, const char *name) {
-    AVLMatchList matches;
-    AVLNode *selected = NULL;
-    int i;
-    int choice;
-
-    initAVLMatchList(&matches);
-    collectAVLMatches(root, name, &matches);
-
-    if (matches.count == 0) {
-        printf("Building not found.\n");
-    } else if (matches.count == 1) {
-        selected = getAVLMatchAt(&matches, 0);
-    } else {
-        printf("Multiple buildings match that name:\n");
-        for (i = 0; i < matches.count; i++) {
-            selected = getAVLMatchAt(&matches, i);
-            if (selected != NULL) {
-                printBuildingChoice(i + 1, &selected->data);
-            }
-        }
-        choice = readIntInRange("Choose building number to use: ", 1, matches.count);
-        selected = getAVLMatchAt(&matches, choice - 1);
-    }
-
-    freeAVLMatchList(&matches);
-    return selected;
 }
 
 static AVLNode *createNode(Building data) {
@@ -687,6 +513,23 @@ static AVLNode *deleteAVL(AVLNode *root, const char *name, int *deleted) {
     return root;
 }
 
+static AVLNode *searchAVL(AVLNode *root, const char *name) {
+    int comparison;
+
+    if (root == NULL) {
+        return NULL;
+    }
+
+    comparison = strcmp(name, root->data.name);
+    if (comparison == 0) {
+        return root;
+    }
+    if (comparison < 0) {
+        return searchAVL(root->left, name);
+    }
+    return searchAVL(root->right, name);
+}
+
 static void inorderTraversal(const AVLNode *root) {
     if (root == NULL) {
         return;
@@ -807,8 +650,9 @@ static int searchAndMaybeUpdate(AVLNode *root) {
     AVLNode *found;
 
     readString("Enter building name to search: ", name, NAME_LEN);
-    found = chooseAVLMatch(root, name);
+    found = searchAVL(root, name);
     if (found == NULL) {
+        printf("Building not found.\n");
         return 0;
     }
 
@@ -910,94 +754,8 @@ static void freeHashTable(HashTable *table) {
     }
 }
 
-static void initHashMatchList(HashMatchList *list) {
-    list->indexes = NULL;
-    list->count = 0;
-    list->capacity = 0;
-}
-
-static void freeHashMatchList(HashMatchList *list) {
-    free(list->indexes);
-    list->indexes = NULL;
-    list->count = 0;
-    list->capacity = 0;
-}
-
-static int addHashMatch(HashMatchList *list, int index) {
-    int *newIndexes;
-    int newCapacity;
-
-    if (list->count == list->capacity) {
-        newCapacity = list->capacity == 0 ? 4 : list->capacity * 2;
-        newIndexes = (int *)realloc(list->indexes, (size_t)newCapacity * sizeof(int));
-        if (newIndexes == NULL) {
-            printf("Memory allocation failed.\n");
-            return 0;
-        }
-        list->indexes = newIndexes;
-        list->capacity = newCapacity;
-    }
-
-    list->indexes[list->count++] = index;
-    return 1;
-}
-
-static void collectHashMatches(const HashTable *table, const char *name, HashMatchList *matches) {
-    int i;
-
-    if (table == NULL || table->entries == NULL) {
-        return;
-    }
-
-    for (i = 0; i < table->size; i++) {
-        if (table->entries[i].status == OCCUPIED &&
-            equalsIgnoreCase(table->entries[i].data.name, name)) {
-            addHashMatch(matches, i);
-        }
-    }
-}
-
-static int chooseHashMatch(const HashTable *table, const char *name, int *collisions) {
-    HashMatchList matches;
-    int selectedIndex = -1;
-    int i;
-    int choice;
-
-    if (collisions != NULL) {
-        *collisions = 0;
-    }
-
-    initHashMatchList(&matches);
-    collectHashMatches(table, name, &matches);
-
-    if (matches.count == 0) {
-        printf("Building not found.\n");
-    } else if (matches.count == 1) {
-        selectedIndex = matches.indexes[0];
-    } else {
-        printf("Multiple buildings match that name:\n");
-        for (i = 0; i < matches.count; i++) {
-            printBuildingChoice(i + 1, &table->entries[matches.indexes[i]].data);
-        }
-        choice = readIntInRange("Choose building number to use: ", 1, matches.count);
-        selectedIndex = matches.indexes[choice - 1];
-    }
-
-    if (collisions != NULL && selectedIndex != -1) {
-        for (i = 0; i < selectedIndex; i++) {
-            if (table->entries[i].status == OCCUPIED &&
-                !equalsIgnoreCase(table->entries[i].data.name, name)) {
-                (*collisions)++;
-            }
-        }
-    }
-
-    freeHashMatchList(&matches);
-    return selectedIndex;
-}
-
 /* Collision handling uses linear probing; DELETED slots are reusable but not collisions. */
-static int insertHashWithDuplicateMode(HashTable *table, Building data, int *collisions, int ignoreCaseDuplicates) {
+static int insertHash(HashTable *table, Building data, int *collisions) {
     unsigned int base;
     int i;
     int index;
@@ -1014,11 +772,7 @@ static int insertHashWithDuplicateMode(HashTable *table, Building data, int *col
 
     for (i = 0; i < table->size; i++) {
         if (table->entries[i].status == OCCUPIED) {
-            if (ignoreCaseDuplicates) {
-                if (equalsIgnoreCase(table->entries[i].data.name, data.name)) {
-                    return 0;
-                }
-            } else if (strcmp(table->entries[i].data.name, data.name) == 0) {
+            if (strcmp(table->entries[i].data.name, data.name) == 0) {
                 return 0;
             }
         }
@@ -1055,15 +809,50 @@ static int insertHashWithDuplicateMode(HashTable *table, Building data, int *col
     return -1;
 }
 
-static int insertHash(HashTable *table, Building data, int *collisions) {
-    return insertHashWithDuplicateMode(table, data, collisions, 1);
+static int searchHash(const HashTable *table, const char *name, int *index, int *collisions) {
+    unsigned int base;
+    int i;
+    int current;
+
+    if (index != NULL) {
+        *index = -1;
+    }
+    if (collisions != NULL) {
+        *collisions = 0;
+    }
+
+    if (table == NULL || table->entries == NULL || table->size == 0) {
+        return 0;
+    }
+
+    base = hashFunction(name, table->size);
+    for (i = 0; i < table->size; i++) {
+        current = (int)((base + (unsigned int)i) % (unsigned int)table->size);
+
+        if (table->entries[current].status == EMPTY) {
+            return 0;
+        }
+
+        if (table->entries[current].status == OCCUPIED) {
+            if (strcmp(table->entries[current].data.name, name) == 0) {
+                if (index != NULL) {
+                    *index = current;
+                }
+                return 1;
+            }
+            if (collisions != NULL) {
+                (*collisions)++;
+            }
+        }
+    }
+
+    return 0;
 }
 
 static int deleteHash(HashTable *table, const char *name, int *collisions) {
     int index;
 
-    index = chooseHashMatch(table, name, collisions);
-    if (index != -1) {
+    if (searchHash(table, name, &index, collisions)) {
         table->entries[index].status = DELETED;
         table->count--;
         return 1;
@@ -1169,7 +958,7 @@ static int loadHashFromFile(HashTable *table) {
         }
 
         if (parseBuildingLine(line, &building)) {
-            inserted = insertHashWithDuplicateMode(table, building, &collisions, 0);
+            inserted = insertHash(table, building, &collisions);
             if (inserted == 1) {
                 loaded++;
             } else {
@@ -1193,9 +982,7 @@ static AVLNode *avlMenu(AVLNode *root, HashTable *table, int *exitProgram) {
     int minApartments;
     int matches;
     char name[NAME_LEN];
-    char exactName[NAME_LEN];
     Building building;
-    AVLNode *selected;
 
     while (1) {
         printf("\n================ AVL TREE MENU ================\n");
@@ -1218,17 +1005,13 @@ static AVLNode *avlMenu(AVLNode *root, HashTable *table, int *exitProgram) {
                 break;
             case 2:
                 building = inputBuilding();
-                if (hasAVLNameIgnoreCase(root, building.name)) {
-                    printf("Duplicate building name. Insertion rejected.\n");
+                inserted = 0;
+                root = insertAVL(root, building, &inserted);
+                if (inserted) {
+                    printf("Building inserted successfully.\n");
+                    table->loaded = 0;
                 } else {
-                    inserted = 0;
-                    root = insertAVL(root, building, &inserted);
-                    if (inserted) {
-                        printf("Building inserted successfully.\n");
-                        table->loaded = 0;
-                    } else {
-                        printf("Duplicate building name. Insertion rejected.\n");
-                    }
+                    printf("Duplicate building name. Insertion rejected.\n");
                 }
                 break;
             case 3:
@@ -1280,18 +1063,13 @@ static AVLNode *avlMenu(AVLNode *root, HashTable *table, int *exitProgram) {
                     printf("AVL tree is empty.\n");
                 } else {
                     readString("Enter building name to delete: ", name, NAME_LEN);
-                    selected = chooseAVLMatch(root, name);
-                    if (selected != NULL) {
-                        strncpy(exactName, selected->data.name, NAME_LEN - 1);
-                        exactName[NAME_LEN - 1] = '\0';
-                        deleted = 0;
-                        root = deleteAVL(root, exactName, &deleted);
-                        if (deleted) {
-                            printf("Building deleted successfully.\n");
-                            table->loaded = 0;
-                        } else {
-                            printf("Building not found.\n");
-                        }
+                    deleted = 0;
+                    root = deleteAVL(root, name, &deleted);
+                    if (deleted) {
+                        printf("Building deleted successfully.\n");
+                        table->loaded = 0;
+                    } else {
+                        printf("Building not found.\n");
                     }
                 }
                 break;
@@ -1367,12 +1145,12 @@ static int hashMenu(HashTable *table) {
                 break;
             case 5:
                 readString("Enter building name to search: ", name, NAME_LEN);
-                index = chooseHashMatch(table, name, &collisions);
-                if (index != -1) {
+                if (searchHash(table, name, &index, &collisions)) {
                     printf("Building found at index %d.\n", index);
                     printf("Collisions during search: %d\n", collisions);
                     printBuilding(&table->entries[index].data);
                 } else {
+                    printf("Building not found.\n");
                     printf("Collisions during search: %d\n", collisions);
                 }
                 break;
@@ -1381,6 +1159,7 @@ static int hashMenu(HashTable *table) {
                 if (deleteHash(table, name, &collisions)) {
                     printf("Building deleted successfully. Collisions during delete search: %d\n", collisions);
                 } else {
+                    printf("Building not found. ");
                     printf("Collisions during delete search: %d\n", collisions);
                 }
                 break;
