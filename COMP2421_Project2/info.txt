@@ -12,12 +12,6 @@ ABCD Tower:301:Street A:10:2010:yes
 ABCD Plaza:302:Street B:12:2011:no
 ABCD Center:303:Street C:14:2012:yes
 ABCD Residence:304:Street D:16:2013:no
-Test Leaf:401:Leaf Street:3:2020:yes
-Test One Child:402:One Child Street:6:2019:no
-Test Two Child:403:Two Child Street:9:2018:yes
-Alpha Building:501:Location A:0:2025:yes
-Beta Building:502:Location B:1:2024:no
-Gamma Building:503:Location C:100:2000:yes
 Aaaa One:601:Collision Road 1:11:2010:yes
 Aaaa Two:602:Collision Road 2:12:2011:no
 Aaaa Three:603:Collision Road 3:13:2012:yes
@@ -26,7 +20,13 @@ Same Prefix One:701:Same Street 1:15:2014:yes
 Same Prefix Two:702:Same Street 2:16:2015:no
 Same Prefix Three:703:Same Street 3:17:2016:yes
 Same Prefix Four:704:Same Street 4:18:2017:no
-Small Apt:801:Small Street:0:2022:no
-Large Apt:802:Large Street:250:2005:yes
-Newest Building:803:Modern Street:33:2026:yes
-Oldest Building:804:Old Street:4:1800:no
+Small:801:Capital Street:5:2020:yes
+small:802:Lower Street:6:2021:no
+SMALL:803:Upper Street:7:2022:yes
+Large Apt:804:Large Street:250:2005:yes
+Zero Apt:805:Zero Street:0:2023:no
+Newest Building:806:Modern Street:33:2026:yes
+Oldest Building:807:Old Street:4:1800:no
+Test Leaf:901:Leaf Street:3:2020:yes
+Test One Child:902:One Child Street:6:2019:no
+Test Two Child:903:Two Child Street:9:2018:yes

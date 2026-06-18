@@ -1,8 +1,6 @@
-Beta Building:502:Location B:1:2024:no
-Alpha Building:501:Location A:0:2025:yes
-Small Apt:801:Small Street:0:2022:no
+Small:801:Capital Street:5:2020:yes
 Iskan Al Andalus:120:Gabi Baramke:10:2020:no
-Newest Building:803:Modern Street:33:2026:yes
+Newest Building:806:Modern Street:33:2026:yes
 Aaaa Four:604:Collision Road 4:14:2013:no
 Aaaa One:601:Collision Road 1:11:2010:yes
 Aaaa Three:603:Collision Road 3:13:2012:yes
@@ -10,22 +8,24 @@ ABCD Plaza:302:Street B:12:2011:no
 ABCD Residence:304:Street D:16:2013:no
 ABCD Tower:301:Street A:10:2010:yes
 Aaaa Two:602:Collision Road 2:12:2011:no
-Large Apt:802:Large Street:250:2005:yes
+Large Apt:804:Large Street:250:2005:yes
 Jbeneh:121:Nishan Street:15:2012:no
 Same Prefix Four:704:Same Street 4:18:2017:no
 Same Prefix One:701:Same Street 1:15:2014:yes
-Oldest Building:804:Old Street:4:1800:no
+Oldest Building:807:Old Street:4:1800:no
 Al Amal:201:Old City:5:2015:yes
 Same Prefix Three:703:Same Street 3:17:2016:yes
 Same Prefix Two:702:Same Street 2:16:2015:no
-Test Leaf:401:Leaf Street:3:2020:yes
-Test One Child:402:One Child Street:6:2019:no
-Test Two Child:403:Two Child Street:9:2018:yes
+Test Leaf:901:Leaf Street:3:2020:yes
+Test One Child:902:One Child Street:6:2019:no
+Test Two Child:903:Two Child Street:9:2018:yes
+small:802:Lower Street:6:2021:no
 Al Noor:200:University Street:30:2018:no
 Al Rabee 1:512:Rabee Main Street:10:2021:yes
 Al Rabee 2:513:Rabee Main Street:25:2024:yes
 Al Rawda:204:Downtown:8:2008:no
 Alquds:20:Al Marj:15:1999:yes
+Zero Apt:805:Zero Street:0:2023:no
+SMALL:803:Upper Street:7:2022:yes
 Al Yasmeen:202:Rafidia:12:2017:no
 Al Zahra:203:New Nablus:40:2010:yes
-Gamma Building:503:Location C:100:2000:yes
