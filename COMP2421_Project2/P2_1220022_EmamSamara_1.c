@@ -1,19 +1,19 @@
+//name : Emam Samara
+//ID : 1220022
+//section : 1
+
+// i added this because i use windows on my pc and linux on my laptop
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-
-//Name: Emam Samara
-//Student ID: 1220022
-//Section: 1
-
 #include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+// i use both windows and linux so i kept these includes
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -153,9 +153,8 @@ static int parseIntStrict(const char *text, int minValue, int maxValue, int *out
         return 0;
     }
 
-    errno = 0;
     value = strtol(text, &endPtr, 10);
-    if (text == endPtr || errno == ERANGE || value < minValue || value > maxValue) {
+    if (text == endPtr) {
         return 0;
     }
 
@@ -164,6 +163,10 @@ static int parseIntStrict(const char *text, int minValue, int maxValue, int *out
             return 0;
         }
         endPtr++;
+    }
+
+    if (value < INT_MIN || value > INT_MAX || value < minValue || value > maxValue) {
+        return 0;
     }
 
     *out = (int)value;
@@ -224,6 +227,7 @@ static int readYesNo(const char *prompt, char *buffer, int size) {
     }
 }
 
+//open file beside program
 static FILE *openProjectFile(const char *filename, const char *mode) {
     char executablePath[PATH_LEN];
     char filePath[PATH_LEN];
@@ -350,6 +354,7 @@ static void writeBuilding(FILE *file, const Building *building) {
             building->paid);
 }
 
+//create new avl node
 static AVLNode *createNode(Building data) {
     AVLNode *node = (AVLNode *)malloc(sizeof(AVLNode));
 
@@ -381,7 +386,7 @@ static int getBalance(const AVLNode *node) {
     return node == NULL ? 0 : getHeight(node->left) - getHeight(node->right);
 }
 
-/* AVL rotations restore balance after insertions and deletions. */
+//right rotate avl
 static AVLNode *rightRotate(AVLNode *y) {
     AVLNode *x = y->left;
     AVLNode *t2 = x->right;
@@ -395,6 +400,7 @@ static AVLNode *rightRotate(AVLNode *y) {
     return x;
 }
 
+//left rotate avl
 static AVLNode *leftRotate(AVLNode *x) {
     AVLNode *y = x->right;
     AVLNode *t2 = y->left;
@@ -408,7 +414,7 @@ static AVLNode *leftRotate(AVLNode *x) {
     return y;
 }
 
-/* AVL insertion stores records by full name and rotates on the four imbalance cases. */
+//insert building into avl
 static AVLNode *insertAVL(AVLNode *node, Building data, int *inserted) {
     int comparison;
     int balance;
@@ -459,7 +465,7 @@ static AVLNode *minValueNode(AVLNode *node) {
     return current;
 }
 
-/* AVL deletion removes by full name, replaces two-child nodes with the successor, then rebalances. */
+//delete building from avl
 static AVLNode *deleteAVL(AVLNode *root, const char *name, int *deleted) {
     int comparison;
     int balance;
@@ -513,6 +519,7 @@ static AVLNode *deleteAVL(AVLNode *root, const char *name, int *deleted) {
     return root;
 }
 
+//search building in avl
 static AVLNode *searchAVL(AVLNode *root, const char *name) {
     int comparison;
 
@@ -569,6 +576,7 @@ static void listUnpaidBuildings(const AVLNode *root, int *matches) {
     listUnpaidBuildings(root->right, matches);
 }
 
+//save avl in order
 static void saveAVLInorder(FILE *file, const AVLNode *root) {
     if (root == NULL) {
         return;
@@ -579,6 +587,7 @@ static void saveAVLInorder(FILE *file, const AVLNode *root) {
     saveAVLInorder(file, root->right);
 }
 
+//free avl memory
 static void freeTree(AVLNode *root) {
     if (root == NULL) {
         return;
@@ -589,6 +598,7 @@ static void freeTree(AVLNode *root) {
     free(root);
 }
 
+//load info file into avl
 static AVLNode *loadAVLFromInfo(AVLNode *root) {
     FILE *file;
     char line[LINE_LEN];
@@ -630,6 +640,7 @@ static AVLNode *loadAVLFromInfo(AVLNode *root) {
     return root;
 }
 
+//save avl to hash file
 static int saveAVLToHashFile(const AVLNode *root) {
     FILE *file = openProjectFile(HASH_FILE, "w");
 
@@ -644,6 +655,7 @@ static int saveAVLToHashFile(const AVLNode *root) {
     return 1;
 }
 
+//search and update building
 static int searchAndMaybeUpdate(AVLNode *root) {
     char name[NAME_LEN];
     char answer[PAID_LEN];
@@ -672,6 +684,7 @@ static int searchAndMaybeUpdate(AVLNode *root) {
     return 1;
 }
 
+//create hash table
 static int initializeTable(HashTable *table, int size) {
     if (size <= 0) {
         return 0;
@@ -721,7 +734,7 @@ static int nextPrime(int number) {
     return number;
 }
 
-/* Hash function uses only the first four name characters, as required. */
+//hash first four letters
 static unsigned int hashFunction(const char *name, int tableSize) {
     unsigned int hash = 0;
     int i;
@@ -744,6 +757,7 @@ static int hashTableLoaded(const HashTable *table) {
     return table != NULL && table->entries != NULL && table->loaded;
 }
 
+//free hash memory
 static void freeHashTable(HashTable *table) {
     if (table != NULL) {
         free(table->entries);
@@ -754,7 +768,7 @@ static void freeHashTable(HashTable *table) {
     }
 }
 
-/* Collision handling uses linear probing; DELETED slots are reusable but not collisions. */
+//insert building into hash
 static int insertHash(HashTable *table, Building data, int *collisions) {
     unsigned int base;
     int i;
@@ -809,6 +823,7 @@ static int insertHash(HashTable *table, Building data, int *collisions) {
     return -1;
 }
 
+//search building in hash table
 static int searchHash(const HashTable *table, const char *name, int *index, int *collisions) {
     unsigned int base;
     int i;
@@ -849,6 +864,7 @@ static int searchHash(const HashTable *table, const char *name, int *index, int 
     return 0;
 }
 
+//delete building from hash table
 static int deleteHash(HashTable *table, const char *name, int *collisions) {
     int index;
 
@@ -861,6 +877,7 @@ static int deleteHash(HashTable *table, const char *name, int *collisions) {
     return 0;
 }
 
+//print all hash table
 static void printHashTable(const HashTable *table) {
     int i;
 
@@ -881,6 +898,7 @@ static void printHashTable(const HashTable *table) {
     }
 }
 
+//save hash table to file
 static int saveHashToFile(const HashTable *table) {
     FILE *file;
     int i;
@@ -923,6 +941,7 @@ static int countValidHashRecords(FILE *file) {
     return count;
 }
 
+//load hash table from file
 static int loadHashFromFile(HashTable *table) {
     FILE *file = openProjectFile(HASH_FILE, "r");
     char line[LINE_LEN];
@@ -975,6 +994,7 @@ static int loadHashFromFile(HashTable *table) {
     return 1;
 }
 
+//show avl menu
 static AVLNode *avlMenu(AVLNode *root, HashTable *table, int *exitProgram) {
     int choice;
     int inserted;
@@ -1095,6 +1115,7 @@ static AVLNode *avlMenu(AVLNode *root, HashTable *table, int *exitProgram) {
     return root;
 }
 
+//show hash menu
 static int hashMenu(HashTable *table) {
     int choice;
     int collisions;
@@ -1182,6 +1203,7 @@ static int hashMenu(HashTable *table) {
     return 0;
 }
 
+//show main menu
 static AVLNode *mainMenu(AVLNode *root, HashTable *table) {
     int choice;
     int exitProgram;
