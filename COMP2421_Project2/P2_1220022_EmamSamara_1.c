@@ -2,29 +2,16 @@
 //ID : 1220022
 //section : 1
 
-// i added this because i use windows on my pc and linux on my laptop
-#ifndef _WIN32
-#define _POSIX_C_SOURCE 200809L
-#endif
-
 #include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// i use both windows and linux so i kept these includes
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
-
 #define NAME_LEN 100
 #define ADDRESS_LEN 150
 #define PAID_LEN 8
 #define LINE_LEN 512
-#define PATH_LEN 4096
 #define INFO_FILE "info.txt"
 #define HASH_FILE "hash.txt"
 #define MIN_HASH_TABLE_SIZE 11
@@ -177,9 +164,8 @@ static void readString(const char *prompt, char *buffer, int size) {
     while (1) {
         printf("%s", prompt);
         if (fgets(buffer, size, stdin) == NULL) {
-            clearerr(stdin);
-            buffer[0] = '\0';
-            continue;
+            printf("\nInput stream closed. Exiting.\n");
+            exit(EXIT_FAILURE);
         }
         removeNewline(buffer);
         trimSpaces(buffer);
@@ -197,8 +183,8 @@ static int readIntInRange(const char *prompt, int minValue, int maxValue) {
     while (1) {
         printf("%s", prompt);
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            clearerr(stdin);
-            continue;
+            printf("\nInput stream closed. Exiting.\n");
+            exit(EXIT_FAILURE);
         }
         removeNewline(buffer);
         trimSpaces(buffer);
@@ -227,45 +213,9 @@ static int readYesNo(const char *prompt, char *buffer, int size) {
     }
 }
 
-//open file beside program
+//open file from the current working directory
 static FILE *openProjectFile(const char *filename, const char *mode) {
-    char executablePath[PATH_LEN];
-    char filePath[PATH_LEN];
-    char *lastSlash;
-
-#ifdef _WIN32
-    DWORD length = GetModuleFileNameA(NULL, executablePath, sizeof(executablePath));
-    if (length == 0 || length >= sizeof(executablePath)) {
-        return fopen(filename, mode);
-    }
-#else
-    ssize_t length = readlink("/proc/self/exe", executablePath, sizeof(executablePath) - 1);
-    if (length == -1 || length >= (ssize_t)sizeof(executablePath) - 1) {
-        return fopen(filename, mode);
-    }
-    executablePath[length] = '\0';
-#endif
-
-    lastSlash = strrchr(executablePath, '/');
-#ifdef _WIN32
-    {
-        char *lastBackslash = strrchr(executablePath, '\\');
-        if (lastBackslash != NULL && (lastSlash == NULL || lastBackslash > lastSlash)) {
-            lastSlash = lastBackslash;
-        }
-    }
-#endif
-
-    if (lastSlash == NULL) {
-        return fopen(filename, mode);
-    }
-
-    *(lastSlash + 1) = '\0';
-    if (snprintf(filePath, sizeof(filePath), "%s%s", executablePath, filename) >= (int)sizeof(filePath)) {
-        return NULL;
-    }
-
-    return fopen(filePath, mode);
+    return fopen(filename, mode);
 }
 
 static int parseBuildingLine(char *line, Building *building) {
@@ -489,10 +439,12 @@ static AVLNode *deleteAVL(AVLNode *root, const char *name, int *deleted) {
                 free(root);
                 return NULL;
             }
+         
             *root = *temp;
             free(temp);
         } else {
             temp = minValueNode(root->right);
+       
             root->data = temp->data;
             root->right = deleteAVL(root->right, temp->data.name, deleted);
         }
@@ -609,7 +561,7 @@ static AVLNode *loadAVLFromInfo(AVLNode *root) {
 
     file = openProjectFile(INFO_FILE, "r");
     if (file == NULL) {
-        printf("info.txt was not found beside the executable.\n");
+        printf("%s was not found in the current working directory.\n", INFO_FILE);
         return root;
     }
 
@@ -784,19 +736,14 @@ static int insertHash(HashTable *table, Building data, int *collisions) {
         return -1;
     }
 
-    for (i = 0; i < table->size; i++) {
-        if (table->entries[i].status == OCCUPIED) {
-            if (strcmp(table->entries[i].data.name, data.name) == 0) {
-                return 0;
-            }
-        }
-    }
-
     base = hashFunction(data.name, table->size);
     for (i = 0; i < table->size; i++) {
         index = (int)((base + (unsigned int)i) % (unsigned int)table->size);
 
         if (table->entries[index].status == OCCUPIED) {
+            if (strcmp(table->entries[index].data.name, data.name) == 0) {
+                return 0;
+            }
             if (collisions != NULL) {
                 (*collisions)++;
             }
@@ -954,7 +901,7 @@ static int loadHashFromFile(HashTable *table) {
     int tableSize;
 
     if (file == NULL) {
-        printf("hash.txt was not found beside the executable.\n");
+        printf("%s was not found in the current working directory.\n", HASH_FILE);
         return 0;
     }
 
